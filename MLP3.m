@@ -3,7 +3,7 @@ close all
  
 % Hyperparameter
 submission=0;
-method='LR';%NN,SVM,LR,LRlasso,DA
+method='LRlasso';%NN,SVM,LR,LRlasso,DA
 class=3;%1=sex,2=age,3=health
 cv=10;%0 for no cv
 

@@ -27,8 +27,6 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
         CV=cv;
     end
     perf=[];
-    e=[];
-    
     for i=1:CV %the validation loop
         if submission==0 && cv>0 
             valbegin_0=round(((size(X_tr_0,1)-valblock_0)/cv)*i);
@@ -63,20 +61,17 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
         %LR------
         if strcmp(method,'LR')==1
             if strcmp(train_or_test,'test')==1
-               yh_test=glmval(CLOBJ,X_train,'logit');
+               yh_test=round(glmval(CLOBJ,X_train,'logit'));
                ClObj=CLOBJ;
                if submission==0
-                   score=Crossentropy(y_train,yh_test)
-                   [sorted I]=sort(abs(y_train-yh_test));
-                   [sorted y_train(I)];
+                   score=HammingLoss(y_train,yh_test)
                end
             else
                 [b,dev,stats] = glmfit(X_train,y_train,'binomial','link','logit');
                 ClObj=b;
                 if submission==0 && cv>0 
-                    yhat = glmval(b,X_val,'logit');
-                    perf=[perf Crossentropy(y_val,yhat)];
-                    e=[e;y_val-yhat];
+                    yhat = round(glmval(b,X_val,'logit'));
+                    perf=[perf HammingLoss(y_val,yhat)];
                 end
             end
         
@@ -84,23 +79,22 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
         %LRlasso------
         elseif strcmp(method,'LRlasso')==1
             if strcmp(train_or_test,'test')==1
-               yh_test=glmval(CLOBJ,X_train,'logit');
+               yh_test=round(glmval(CLOBJ,X_train,'logit'));
                ClObj=CLOBJ;
                if submission==0
-                   score=Crossentropy(y_train,yh_test)
+                   score=HammingLoss(y_train,yh_test)
                end
             else
-                %find right lambda:
-        %         [B,FitInfo] = lassoglm(X_train,y_train,'binomial','NumLambda',25,'CV',10);
-        %         lambda=FitInfo.Lambda1SE
-                lambda=0.03;
+%               find right lambda:
+%                 [B,FitInfo] = lassoglm(X_train,y_train,'binomial','NumLambda',25,'CV',10);
+%                 lambda=FitInfo.Lambda1SE
+                lambda=0.02;
                 [B,FitInfo] = lassoglm(X_train,y_train,'binomial','Lambda',lambda);
                 b=[FitInfo.Intercept;B];
                 ClObj=b;
                 if submission==0 && cv>0 
-                    yhat = glmval(b,X_val,'logit');
-                    perf=[perf Crossentropy(y_val,yhat)];
-                    e=[e;y_val-yhat];
+                    yhat = round(glmval(b,X_val,'logit'));
+                    perf=[perf HammingLoss(y_val,yhat)];
                 end
             end
 
@@ -118,13 +112,11 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
             else 
                 %kernels: linear,quadratic,polynomial,rbf,mlp --- ,'KernelScale','auto'
                 SVMModel = fitcsvm(X_train,y_train,'KernelFunction','linear');
-                [SVMModel,ScoreParameters] = fitSVMPosterior(SVMModel);
                 ClObj=SVMModel;
                 if submission==0 && cv>0 
                     [Decision,Posterior] = predict(SVMModel,X_val);
-                    yhat=Posterior(:,2);
-                    perf=[perf Crossentropy(y_val,yhat)];
-                    e=[e;y_val-yhat];
+                    yhat=Decision;
+                    perf=[perf HammingLoss(y_val,yhat)];
                     strcat('Crossvalidation epoch: ',num2str(i),'/',num2str(cv))
                     loss=[mean(perf);median(perf);var(perf)^(1/2)]
                 end
@@ -155,7 +147,6 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
                 if submission==0 && cv>0 
                     yhat = net(X_val')';%estimate
                     perf=[perf Crossentropy(y_val,yhat(:,2))];
-                    e=[e;y_val-yhat(:,2)];
                 end
             end
         elseif strcmp(method,'DA')==1
@@ -175,6 +166,5 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
     else
         perf=[0 0 0];
     end
-
 end
 
