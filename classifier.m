@@ -126,11 +126,10 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
     %         % Neural Netowrk---------------
         elseif strcmp(method,'NN')==1
             if strcmp(train_or_test,'test')==1
-               yh_test=CLOBJ(X_train')';
-               yh_test=yh_test(:,2);
+               yh_test=roundCLOBJ(X_train')';
                ClObj=CLOBJ;
                if submission==0
-                   score=Crossentropy(y_train,yh_test)
+                   score=HammingLoss(y_train,round(yh_test(:,2)))
                end
             else
                 rng(2)
@@ -146,20 +145,16 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
                 ClObj=net;
                 if submission==0 && cv>0 
                     yhat = net(X_val')';%estimate
-                    perf=[perf Crossentropy(y_val,yhat(:,2))];
+                    perf=[perf HammingLoss(y_val,round(yhat(:,2)))];
                 end
             end
-        elseif strcmp(method,'DA')==1
-            DA=fitcdiscr(X_train,y_train);
-            yhat=predict(DA,X_val);
-            perf=[perf Crossentropy(y_val,yhat)];
         else
+            method
             error('choose a valid method')
         end
     end
     if submission==0 && strcmp(train_or_test,'test')==0 && cv>0
         perf=[mean(perf) median(perf) var(perf)^(1/2)];
-%         hist(sort(e));
         if cv>0
             ClObj=classifier(X_tr,y,submission,method,0,'train','void');
         end
