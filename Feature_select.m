@@ -8,7 +8,7 @@ function X = Feature_select(train_or_test,B,spec,sb,interval)
     end
     if exist(strcat('X',spec,id,'_',train_or_test,'_'...
             ,num2str(sb),num2str(sum(interval)),'.csv'))==0 
-        strcat('calculate_',spec,'_features_for_the',train_or_test,'_set')
+        strcat('calculate_',spec,'_features_for_the_',train_or_test,'_set')
         for i=1:n  
             j=num2str(i);     
             Data=load_nii(strcat(train_or_test,'_',j,'.nii'));

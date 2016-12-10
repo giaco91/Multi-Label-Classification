@@ -8,7 +8,7 @@ rng(1);
     if strcmp(method,'SVM')==1
         [~,scores] = predict(ClObj,xGrid); % The scores
         scores=scores(:,2);
-    elseif strcmp(method,'LR')==1
+    elseif strcmp(method,'LR')==1 || strcmp(method,'LRlasso')==1
         scores=glmval(ClObj,xGrid,'logit');
     end
     

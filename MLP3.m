@@ -2,10 +2,14 @@ clear all
 close all
  
 % Hyperparameter
-submission=0;
-method='NN';%NN,SVM,LR,LRlasso
-class=3;%1=sex,2=age,3=health
+submission=1;
+method='LR';%NN,SVM,LR,LRlasso
+class=[1 2 3];%1=sex,2=age,3=health, void: 110 010
 cv=10;%0 for no cv
+
+if submission==1;
+    class=[1 2 3];
+end
 
 %read in target-vector
 y=csvread('targets.csv');
@@ -37,8 +41,8 @@ abv=Feature_select('train',[1 89;1 208;1 176],'ivoxvar',0,[920 1420]);
 X=[hv hdm hbm hdv hbv iv idm ibm idv ibv av adm abm adv abv];
 X=preprocess(X,y,'train','norm','id');
 X_train=X;
+
 if submission==1
-        
         %hypocampus
         thv=Feature_select('test',[49 71;100 112;53 65],'voxvar',0,0);
         thdm=Feature_select('test',[49 71;100 112;53 65],'ivox',0,[20 140]);
@@ -65,18 +69,53 @@ if submission==1
         Y=preprocess(Y,'void','test','norm','id');
         X_test=Y;
 end
-    
-[ClObj void perf]=classifier(X_train,y_train,submission,method,cv,'train','void');
-CV_mean_med_std=perf'
+
+CV_mean_med_std=zeros(3,1);
+for i=1:length(class)
+    [ClObj void perf]=classifier(X_train,y_train(:,i),submission,method,cv,'train','void');
+    save(strcat('ClObj_',num2str(i),'.mat'),'ClObj');
+    CV_mean_med_std=CV_mean_med_std+perf';
+end
+CV_mean_med_std=CV_mean_med_std/length(class)
+
 if submission==1
-        [void yhat void]=classifier(X_test,'void',submission,method,cv,'test',ClObj);
-        header={'"ID"','"Prediction"'};
-        submission_data=[[1:length(yhat)]',yhat];
-        csvwrite_with_headers('submission.csv',submission_data,header)
+    yhat=[];
+    for i=1:length(class)
+        CO=load(strcat('ClObj_',num2str(i),'.mat'));
+        [void yhat(:,i) void]=classifier(X_test,'void',submission,method,cv,...
+            'test',CO.ClObj);
+    end
+    
+    %check if there are young-sick classes
+    a=0;
+    for i=1:size(yhat,1)
+        oli=yhat(i,2:3)==[1 0];
+        if sum(oli)==2
+            a=a+1;
+        end
+    end
+    if a>0
+        warning(strcat('there_are_',num2str(a),'_young-sick_classifications'));
+    else
+        'there are no young-sick classes'
+    end
+    
+    %write file
+    header={'ID','Sample','Label','Predicted'};
+    submission_data=cell(413,4);
+    Class={'gender','age','health'};
+    bool={'False','True'};
+    fid = fopen('submission.csv','w');
+    fprintf(fid,'%s,%s,%s,%s\n',header{1:4});
+    for i=1:3:3*length(yhat)
+        for j=1:3
+            fprintf(fid,'%d,%d,%s,%s\n',i+j-2,(i-1)/3,Class{j},bool{(yhat((i-1)/3+1,j)==1)+1});
+        end
+    end
+    fclose(fid);
 end
 
-
-if size(X_train,2)==2
+if size(X_train,2)==2 && strcmp(method,'NN')==0
     CLplotter(ClObj,X_train,y_train,'train',method);
 end
 

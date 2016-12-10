@@ -1,26 +1,29 @@
 function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_test,CLOBJ)
     %make sure, that the classpartitions are the same in crossvalidation-
     %and test-sets
-    [sorted_y I]=sort(y);
-    y_0=sorted_y(1:length(y)-sum(y));
-    y_1=sorted_y(length(y)-sum(y):end);
-    X_tr_sorted=X_tr(I,:);
-    X_tr_0=X_tr_sorted(1:length(y)-sum(y),:);
-    X_tr_1=X_tr_sorted(length(y)-sum(y):end,:);
-    
+    if strcmp(train_or_test,'test')==1 && submission==1
+    else
+        [sorted_y I]=sort(y);
+        y_0=sorted_y(1:length(y)-sum(y));
+        y_1=sorted_y(length(y)-sum(y):end);
+        X_tr_sorted=X_tr(I,:);
+        X_tr_0=X_tr_sorted(1:length(y)-sum(y),:);
+        X_tr_1=X_tr_sorted(length(y)-sum(y):end,:);
+        if cv<10
+            valblock_0=round(size(X_tr_0,1)/10);
+            valblock_1=round(size(X_tr_1,1)/10);
+        elseif cv>=10
+            valblock_0=round(size(X_tr_0,1)/cv);
+            valblock_1=round(size(X_tr_1,1)/cv);
+        end
+    end
     %amount of crossvalidation
     if strcmp(train_or_test,'test')==1
         cv=0;
     else
         yh_test=0;
     end
-    if cv<10
-        valblock_0=round(size(X_tr_0,1)/10);
-        valblock_1=round(size(X_tr_1,1)/10);
-    elseif cv>=10
-        valblock_0=round(size(X_tr_0,1)/cv);
-        valblock_1=round(size(X_tr_1,1)/cv);
-    end
+ 
     if cv<=0 || submission==1
         CV=1;
     else
@@ -104,10 +107,10 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
             rng(4)
             if strcmp(train_or_test,'test')==1
                [Decision,Posterior] = predict(CLOBJ,X_train);
-               yh_test=Posterior(:,2);
+               yh_test=Decision;
                ClObj=CLOBJ;
                if submission==0
-                   score=Crossentropy(y_train,yh_test)
+                   score=HamingLoss(y_train,yh_test)
                end
             else 
                 %kernels: linear,quadratic,polynomial,rbf,mlp --- ,'KernelScale','auto'
@@ -126,10 +129,11 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
     %         % Neural Netowrk---------------
         elseif strcmp(method,'NN')==1
             if strcmp(train_or_test,'test')==1
-               yh_test=roundCLOBJ(X_train')';
+               yh_test=CLOBJ(X_train')';
+               yh_test=round(yh_test(:,2));
                ClObj=CLOBJ;
                if submission==0
-                   score=HammingLoss(y_train,round(yh_test(:,2)))
+                   score=HammingLoss(y_train,yh_test)
                end
             else
                 rng(2)
@@ -149,7 +153,6 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
                 end
             end
         else
-            method
             error('choose a valid method')
         end
     end
