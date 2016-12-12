@@ -64,7 +64,8 @@ function [ClObj yh_test perf] = classifier(X_tr,y,submission,method,cv,train_or_
         %LR------
         if strcmp(method,'LR')==1
             if strcmp(train_or_test,'test')==1
-               yh_test=round(glmval(CLOBJ,X_train,'logit'));
+               yh_test=glmval(CLOBJ,X_train,'logit');
+%                yh_test = round(process(glmval(CLOBJ,X_train,'logit')));
                ClObj=CLOBJ;
                if submission==0
                    score=HammingLoss(y_train,yh_test)

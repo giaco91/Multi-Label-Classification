@@ -2,18 +2,25 @@ clear all
 close all
  
 % Hyperparameter
-submission=1;
+submission=0;
 method='LR';%NN,SVM,LR,LRlasso
 class=[1 2 3];%1=sex,2=age,3=health, void: 110 010
+extraclass=1;%the possibility to define extra classes at around line 20
 cv=10;%0 for no cv
 
 if submission==1;
     class=[1 2 3];
+    extraclass=0;
 end
 
 %read in target-vector
 y=csvread('targets.csv');
 y_train=y(:,class);
+if extraclass==1
+    %i.e % [2 0 0],[2 0 1] means 0=old-sick, 1=old-healthy
+    [z_train idx]=get_extratarget([2 0 0],[2 0 1]);%(2 for arbitrary)   
+end
+    
 
 %extract features
 
@@ -39,8 +46,12 @@ adv=Feature_select('train',[1 89;1 208;1 176],'ivoxvar',0,[70 320]);
 abv=Feature_select('train',[1 89;1 208;1 176],'ivoxvar',0,[920 1420]);
 
 X=[hv hdm hbm hdv hbv iv idm ibm idv ibv av adm abm adv abv];
+X=[X(:,5) X(:,3)];
 X=preprocess(X,y,'train','norm','id');
 X_train=X;
+if extraclass==1
+    X_train_extra=X(idx==1,:);
+end
 
 if submission==1
         %hypocampus
@@ -78,6 +89,13 @@ for i=1:length(class)
 end
 CV_mean_med_std=CV_mean_med_std/length(class)
 
+ 
+ if extraclass==1
+        [ClObj void perf]=classifier(X_train_extra,z_train,submission,method,cv,'train','void');
+        save(strcat('ClObj_extra',num2str(1),'.mat'),'ClObj');
+        CV_mean_med_std_extra=perf'
+ end
+
 if submission==1
     yhat=[];
     for i=1:length(class)
@@ -86,6 +104,10 @@ if submission==1
             'test',CO.ClObj);
     end
     
+    figure(1)
+    hist(yhat(:,1))
+%     yhat = round(process(yhat));
+ 
     %check if there are young-sick classes
     a=0;
     for i=1:size(yhat,1)
@@ -116,7 +138,10 @@ if submission==1
 end
 
 if size(X_train,2)==2 && strcmp(method,'NN')==0
-    CLplotter(ClObj,X_train,y_train,'train',method);
+    'plotting the featurespace and boundary for a class'
+    class=2;
+    CO=load(strcat('ClObj_',num2str(class),'.mat'));
+    CLplotter(CO.ClObj,X_train,y_train(:,class),'train',method);
 end
 
 % 
